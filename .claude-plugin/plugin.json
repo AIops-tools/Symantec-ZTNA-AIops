@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "symantec-ztna-aiops",
+  "displayName": "Symantec ZTNA AIops",
+  "version": "0.1.0",
+  "description": "Governed Symantec ZTNA operations \u2014 16 MCP tools with audit.",
+  "author": {
+    "name": "Wei Zhou",
+    "email": "zhouwei008@gmail.com",
+    "url": "https://github.com/AIops-tools"
+  },
+  "homepage": "https://github.com/AIops-tools/Symantec-ZTNA-AIops",
+  "repository": "https://github.com/AIops-tools/Symantec-ZTNA-AIops",
+  "license": "MIT",
+  "keywords": [
+    "symantec",
+    "ztna",
+    "zero-trust",
+    "mcp",
+    "aiops"
+  ]
+}

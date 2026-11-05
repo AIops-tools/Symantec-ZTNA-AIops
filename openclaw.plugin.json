@@ -1,0 +1,24 @@
+{
+  "id": "symantec-ztna-aiops",
+  "name": "Symantec ZTNA AIops",
+  "description": "Governed Symantec ZTNA operations — 16 MCP tools with audit.",
+  "skills": [
+    "./skills"
+  ],
+  "mcpServers": {
+    "symantec-ztna-aiops": {
+      "transport": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "symantec-ztna-aiops==0.1.0",
+        "symantec-ztna-aiops-mcp"
+      ]
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

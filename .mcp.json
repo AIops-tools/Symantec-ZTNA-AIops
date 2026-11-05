@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "symantec-ztna-aiops": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "symantec-ztna-aiops==0.1.0",
+        "symantec-ztna-aiops-mcp"
+      ]
+    }
+  }
+}
