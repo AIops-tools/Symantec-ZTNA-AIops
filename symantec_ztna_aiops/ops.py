@@ -216,3 +216,196 @@ def health_sample(conn: ZtnaConnection, limit: int = 20) -> dict:
             sample[name] = None
             errors[name] = str(exc)
     return {"sample": sample, "errors": errors, "partial": bool(errors), "sampleLimit": limit}
+
+
+def _idp_page(
+    conn: ZtnaConnection, path: str, limit: int = 25, page_offset: str = "", filter_text: str = ""
+) -> dict:
+    limit = _limit(limit)
+    if len(page_offset) > 512 or len(filter_text) > 200:
+        raise ValueError("Identity page cursor or filter exceeds bound")
+    params: dict[str, Any] = {"perPage": limit}
+    if page_offset:
+        params["pageOffset"] = page_offset
+    if filter_text:
+        params["filter"] = filter_text
+    data = conn.get(path, params=params)
+    if not isinstance(data, dict) or not isinstance(data.get("content"), list):
+        raise ZtnaError(f"ZTNA returned an unexpected identity page for {path}")
+    rows = data["content"]
+    if any(not isinstance(row, dict) for row in rows) or len(rows) > limit:
+        raise ZtnaError(f"ZTNA returned invalid identity rows for {path}")
+    last = data.get("last")
+    if not isinstance(last, bool):
+        raise ZtnaError(f"ZTNA returned invalid identity page metadata for {path}")
+    cursor = data.get("nextPage")
+    if not last and (
+        cursor is None
+        or isinstance(cursor, bool)
+        or not isinstance(cursor, (str, int))
+        or str(cursor) == ""
+    ):
+        raise ZtnaError(f"ZTNA omitted the next identity page cursor for {path}")
+    total = data.get("totalElements")
+    if total is not None and (isinstance(total, bool) or not isinstance(total, int)):
+        raise ZtnaError(f"ZTNA returned invalid identity total for {path}")
+    return {
+        "items": rows,
+        "returned": len(rows),
+        "limit": limit,
+        "truncated": not last,
+        "nextCursor": str(cursor) if not last else None,
+        "totalReported": total,
+    }
+
+
+def shared_objects(
+    conn: ZtnaConnection, limit: int = 50, page: int = 0, filter_text: str = ""
+) -> dict:
+    return _paged(
+        conn, "/v2/policies/shared-objects", limit=limit, page=page, filter_text=filter_text
+    )
+
+
+def shared_object(conn: ZtnaConnection, object_id: str) -> dict:
+    return _detail(conn, f"/v2/policies/shared-objects/{_id(object_id)}", "sharedObject")
+
+
+def collections(
+    conn: ZtnaConnection, limit: int = 50, page: int = 0, filter_text: str = ""
+) -> dict:
+    return _paged(conn, "/v2/collection", limit=limit, page=page, filter_text=filter_text)
+
+
+def collection(conn: ZtnaConnection, collection_id: str) -> dict:
+    return _detail(conn, f"/v2/collection/{_id(collection_id)}", "collection")
+
+
+def site_collections(conn: ZtnaConnection, site_id: str) -> dict:
+    return _detail(conn, f"/v2/collection/site/{_id(site_id)}", "collections")
+
+
+def role_bindings(conn: ZtnaConnection, limit: int = 50, page: int = 0) -> dict:
+    return _paged(conn, "/v2/collection/role-bindings", limit=limit, page=page)
+
+
+def dns_groups(conn: ZtnaConnection, limit: int = 50, page: int = 0, filter_text: str = "") -> dict:
+    return _paged(
+        conn,
+        "/v2/wss-integration-tenant/dns-groups",
+        limit=limit,
+        page=page,
+        filter_text=filter_text,
+    )
+
+
+def dns_group(conn: ZtnaConnection, group_id: str) -> dict:
+    return _detail(conn, f"/v2/wss-integration-tenant/dns-groups/{_id(group_id)}", "dnsGroup")
+
+
+def dns_servers(conn: ZtnaConnection, group_id: str, limit: int = 100) -> dict:
+    return _array(
+        conn, f"/v2/wss-integration-tenant/dns-groups/{_id(group_id)}/servers/", limit=limit
+    )
+
+
+def dns_server(conn: ZtnaConnection, group_id: str, server_id: str) -> dict:
+    return _detail(
+        conn,
+        f"/v2/wss-integration-tenant/dns-groups/{_id(group_id)}/servers/{_id(server_id)}",
+        "dnsServer",
+    )
+
+
+def identity_providers(conn: ZtnaConnection, include_local: bool = False, limit: int = 100) -> dict:
+    if not isinstance(include_local, bool):
+        raise ValueError("include_local must be boolean")
+    data = conn.get(
+        "/v2/identities/settings/identity-providers",
+        params={"includeLocal": str(include_local).lower()},
+    )
+    if not isinstance(data, list) or any(not isinstance(row, dict) for row in data):
+        raise ZtnaError("ZTNA returned an unexpected identity provider list")
+    limit = _limit(limit)
+    return {
+        "items": data[:limit],
+        "returned": min(len(data), limit),
+        "limit": limit,
+        "truncated": len(data) > limit,
+    }
+
+
+def users(
+    conn: ZtnaConnection,
+    provider_id: str,
+    limit: int = 25,
+    page_offset: str = "",
+    filter_text: str = "",
+) -> dict:
+    return _idp_page(
+        conn, f"/v2/identities/{_id(provider_id)}/users", limit, page_offset, filter_text
+    )
+
+
+def user(conn: ZtnaConnection, provider_id: str, user_id: str) -> dict:
+    return _detail(conn, f"/v2/identities/{_id(provider_id)}/users/{_id(user_id)}", "user")
+
+
+def groups(
+    conn: ZtnaConnection,
+    provider_id: str,
+    limit: int = 25,
+    page_offset: str = "",
+    filter_text: str = "",
+) -> dict:
+    return _idp_page(
+        conn, f"/v2/identities/{_id(provider_id)}/groups", limit, page_offset, filter_text
+    )
+
+
+def group(conn: ZtnaConnection, provider_id: str, group_id: str) -> dict:
+    return _detail(conn, f"/v2/identities/{_id(provider_id)}/groups/{_id(group_id)}", "group")
+
+
+def group_users(
+    conn: ZtnaConnection, provider_id: str, group_id: str, limit: int = 25, page_offset: str = ""
+) -> dict:
+    return _idp_page(
+        conn, f"/v2/identities/{_id(provider_id)}/groups/{_id(group_id)}/users", limit, page_offset
+    )
+
+
+def blocked_users(conn: ZtnaConnection, limit: int = 100) -> dict:
+    return _array(conn, "/v2/identities/settings/blocked-users", limit=limit)
+
+
+def ssh_clients(
+    conn: ZtnaConnection, limit: int = 50, page: int = 0, filter_text: str = ""
+) -> dict:
+    return _paged(conn, "/v2/ssh-clients", limit=limit, page=page, filter_text=filter_text)
+
+
+def cloud_integrations(conn: ZtnaConnection, limit: int = 100) -> dict:
+    return _array(conn, "/v2/cloud-integrations/integrations", limit=limit)
+
+
+def cloud_integration(conn: ZtnaConnection, integration_id: str) -> dict:
+    return _detail(
+        conn, f"/v2/cloud-integrations/integrations/{_id(integration_id)}", "cloudIntegration"
+    )
+
+
+def policy_condition_definitions(conn: ZtnaConnection) -> dict:
+    return _detail(conn, "/v2/policies/config/condition-definitions", "definitions")
+
+
+def policy_action_types(conn: ZtnaConnection, limit: int = 100) -> dict:
+    return _array(conn, "/v2/policies/config/action-types", limit=limit)
+
+
+def policy_validator_types(conn: ZtnaConnection, limit: int = 100) -> dict:
+    return _array(conn, "/v2/policies/config/validator-types", limit=limit)
+
+
+def region(conn: ZtnaConnection, region_name: str) -> dict:
+    return _detail(conn, f"/v2/regions/{_id(region_name)}", "region")

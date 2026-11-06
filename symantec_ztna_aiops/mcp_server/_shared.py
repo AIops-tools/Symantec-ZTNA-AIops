@@ -39,7 +39,7 @@ mcp = MCPServer(
     "symantec-ztna-aiops",
     version=__version__,
     instructions=(
-        "Audited ZTNA tenant, application, connector and policy read tools. "
+        "Audited ZTNA connectivity, access, identity, DNS and integration read tools. "
         "No state-changing tools in this preview."
     ),
 )

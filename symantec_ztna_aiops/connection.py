@@ -10,6 +10,8 @@ from urllib.parse import urlsplit
 
 import httpx
 
+_MAX_RESPONSE_BYTES = 16 * 1024 * 1024
+
 
 class ZtnaError(RuntimeError):
     """Actionable API error without token or response-body disclosure."""
@@ -144,6 +146,8 @@ class ZtnaConnection:
                         f"ZTNA returned HTTP {response.status_code} for {path}. {hint}",
                         status_code=response.status_code,
                     )
+                if len(response.content) > _MAX_RESPONSE_BYTES:
+                    raise ZtnaError("ZTNA response exceeds 16 MiB; narrow the query")
                 if not response.content:
                     raise ZtnaError(f"ZTNA returned an empty response for {path}")
                 try:

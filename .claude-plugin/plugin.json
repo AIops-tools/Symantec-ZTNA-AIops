@@ -3,7 +3,7 @@
   "name": "symantec-ztna-aiops",
   "displayName": "Symantec ZTNA AIops",
   "version": "0.1.0",
-  "description": "Governed Symantec ZTNA operations \u2014 16 MCP tools with audit.",
+  "description": "Governed Symantec ZTNA operations — 40 MCP tools, read-only with audit.",
   "author": {
     "name": "Wei Zhou",
     "email": "zhouwei008@gmail.com",

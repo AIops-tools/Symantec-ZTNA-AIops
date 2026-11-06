@@ -1,7 +1,7 @@
 {
   "id": "symantec-ztna-aiops",
   "name": "Symantec ZTNA AIops",
-  "description": "Governed Symantec ZTNA operations — 16 MCP tools with audit.",
+  "description": "Governed Symantec ZTNA operations — 40 MCP tools, read-only with audit.",
   "skills": [
     "./skills"
   ],

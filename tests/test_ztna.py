@@ -19,9 +19,11 @@ def env(monkeypatch):
 
 
 def connection(handler) -> ZtnaConnection:
-    return ZtnaConnection(httpx.Client(
-        base_url="https://api.example.luminatesec.com", transport=httpx.MockTransport(handler)
-    ))
+    return ZtnaConnection(
+        httpx.Client(
+            base_url="https://api.example.luminatesec.com", transport=httpx.MockTransport(handler)
+        )
+    )
 
 
 def token(value="token1"):
@@ -36,8 +38,9 @@ def test_oauth_and_page_contract():
         if request.url.path == "/v1/oauth/token":
             return token()
         assert request.url.path == "/v2/sites"
-        return httpx.Response(200, json={"content": [{"id": "s1"}], "number": 2,
-                                         "last": False, "totalElements": 101})
+        return httpx.Response(
+            200, json={"content": [{"id": "s1"}], "number": 2, "last": False, "totalElements": 101}
+        )
 
     result = ops.sites(connection(handler), limit=20, page=2, filter_text="office")
     assert seen[0].method == "POST"
@@ -46,8 +49,15 @@ def test_oauth_and_page_contract():
     assert seen[1].url.params["size"] == "20"
     assert seen[1].url.params["page"] == "2"
     assert seen[1].url.params["filter"] == "office"
-    assert result == {"items": [{"id": "s1"}], "returned": 1, "limit": 20,
-                      "page": 2, "truncated": True, "nextPage": 3, "totalReported": 101}
+    assert result == {
+        "items": [{"id": "s1"}],
+        "returned": 1,
+        "limit": 20,
+        "page": 2,
+        "truncated": True,
+        "nextPage": 3,
+        "totalReported": 101,
+    }
 
 
 def test_401_refreshes_once_and_login_rejection_backs_off():
@@ -60,8 +70,9 @@ def test_401_refreshes_once_and_login_rejection_backs_off():
         calls["api"] += 1
         if calls["api"] == 2:
             return httpx.Response(401, json={"secret": "never log"})
-        return httpx.Response(200, json={"content": [], "number": 0,
-                                         "last": True, "totalElements": 0})
+        return httpx.Response(
+            200, json={"content": [], "number": 0, "last": True, "totalElements": 0}
+        )
 
     conn = connection(handler)
     ops.sites(conn)
@@ -83,8 +94,9 @@ def test_page_metadata_must_be_real():
     def bad(request):
         if request.url.path == "/v1/oauth/token":
             return token()
-        return httpx.Response(200, json={"content": [], "number": 1,
-                                         "last": False, "totalElements": 10})
+        return httpx.Response(
+            200, json={"content": [], "number": 1, "last": False, "totalElements": 10}
+        )
 
     with pytest.raises(ZtnaError, match="metadata"):
         ops.connectors(connection(bad))
@@ -97,21 +109,29 @@ def test_audit_query_only_post_and_measured_truncation():
         if request.url.path == "/v1/oauth/token":
             return token()
         seen.append(request)
-        return httpx.Response(200, json={"Hits": 3, "Logs": [
-            {"Id": "a", "SearchAfterValues": [101, "a"]},
-            {"Id": "b", "SearchAfterValues": [102, "b"]},
-            {"Id": "c", "SearchAfterValues": [103, "c"]},
-        ]})
+        return httpx.Response(
+            200,
+            json={
+                "Hits": 3,
+                "Logs": [
+                    {"Id": "a", "SearchAfterValues": [101, "a"]},
+                    {"Id": "b", "SearchAfterValues": [102, "b"]},
+                    {"Id": "c", "SearchAfterValues": [103, "c"]},
+                ],
+            },
+        )
 
-    result = ops.audit_logs(connection(handler), 1_000, 2_000, limit=2,
-                            free_text="user@example.com")
+    result = ops.audit_logs(
+        connection(handler), 1_000, 2_000, limit=2, free_text="user@example.com"
+    )
     body = json.loads(seen[0].content)
     assert seen[0].method == "POST" and seen[0].url.path == "/v2/logs/audit"
     assert body["size"] == 3
-    assert body["query"] == {"from_date": 1000, "to_date": 2000,
-                             "free_text": "user@example.com"}
-    assert result["items"] == [{"Id": "a", "SearchAfterValues": [101, "a"]},
-                               {"Id": "b", "SearchAfterValues": [102, "b"]}]
+    assert body["query"] == {"from_date": 1000, "to_date": 2000, "free_text": "user@example.com"}
+    assert result["items"] == [
+        {"Id": "a", "SearchAfterValues": [101, "a"]},
+        {"Id": "b", "SearchAfterValues": [102, "b"]},
+    ]
     assert result["truncated"] is True
     assert result["nextCursor"] == [102, "b"]
 
@@ -147,3 +167,63 @@ def test_status_and_metrics_shape():
     conn = connection(handler)
     assert ops.site_status(conn, "s/1") == {"status": {"Status": "online"}}
     assert ops.connector_metrics(conn, "s1", 1000, 2000, "cpu")["metrics"]["result"] == []
+
+
+def test_shared_objects_use_the_verified_page_envelope():
+    def handler(request):
+        if request.url.path == "/v1/oauth/token":
+            return token()
+        assert request.url.path == "/v2/policies/shared-objects"
+        assert request.url.params["size"] == "2"
+        return httpx.Response(
+            200, json={"content": [{"id": "o1"}], "number": 0, "last": True, "totalElements": 1}
+        )
+
+    result = ops.shared_objects(connection(handler), limit=2)
+    assert result["items"] == [{"id": "o1"}]
+    assert result["truncated"] is False
+
+
+def test_identity_provider_cursor_is_opaque_and_required_for_nonfinal_page():
+    seen = []
+
+    def handler(request):
+        if request.url.path == "/v1/oauth/token":
+            return token()
+        seen.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "content": [{"id": "u1"}],
+                "last": False,
+                "nextPage": "opaque:2",
+                "totalElements": 7,
+            },
+        )
+
+    result = ops.users(connection(handler), "local", limit=2, page_offset="opaque:1")
+    assert seen[0].url.params["pageOffset"] == "opaque:1"
+    assert seen[0].url.params["perPage"] == "2"
+    assert result["truncated"] is True and result["nextCursor"] == "opaque:2"
+
+    def no_cursor(request):
+        if request.url.path == "/v1/oauth/token":
+            return token()
+        return httpx.Response(200, json={"content": [{"id": "u1"}], "last": False})
+
+    with pytest.raises(ZtnaError, match="omitted"):
+        ops.groups(connection(no_cursor), "local")
+
+
+def test_oversized_response_is_an_explicit_error(monkeypatch):
+    import symantec_ztna_aiops.connection as connection_module
+
+    monkeypatch.setattr(connection_module, "_MAX_RESPONSE_BYTES", 20)
+
+    def handler(request):
+        if request.url.path == "/v1/oauth/token":
+            return token()
+        return httpx.Response(200, content=b"{" + b" " * 30 + b"}")
+
+    with pytest.raises(ZtnaError, match="exceeds 16 MiB"):
+        ops.sites(connection(handler))

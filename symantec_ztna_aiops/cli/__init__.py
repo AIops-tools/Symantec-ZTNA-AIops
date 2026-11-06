@@ -121,3 +121,123 @@ def main() -> None:
     except BudgetExceeded as exc:
         typer.echo(f"Budget stopped the operation: {exc}", err=True)
         raise typer.Exit(1) from exc
+
+
+@app.command("shared-objects")
+def shared_objects(limit: int = 50, page: int = 0, filter_text: str = "") -> None:
+    _emit(ztna.ztna_shared_objects(limit, page, filter_text))
+
+
+@app.command("shared-object")
+def shared_object(object_id: str) -> None:
+    _emit(ztna.ztna_shared_object(object_id))
+
+
+@app.command("collections")
+def collections(limit: int = 50, page: int = 0, filter_text: str = "") -> None:
+    _emit(ztna.ztna_collections(limit, page, filter_text))
+
+
+@app.command("collection")
+def collection(collection_id: str) -> None:
+    _emit(ztna.ztna_collection(collection_id))
+
+
+@app.command("site-collections")
+def site_collections(site_id: str) -> None:
+    _emit(ztna.ztna_site_collections(site_id))
+
+
+@app.command("role-bindings")
+def role_bindings(limit: int = 50, page: int = 0) -> None:
+    _emit(ztna.ztna_role_bindings(limit, page))
+
+
+@app.command("dns-groups")
+def dns_groups(limit: int = 50, page: int = 0, filter_text: str = "") -> None:
+    _emit(ztna.ztna_dns_groups(limit, page, filter_text))
+
+
+@app.command("dns-group")
+def dns_group(group_id: str) -> None:
+    _emit(ztna.ztna_dns_group(group_id))
+
+
+@app.command("dns-servers")
+def dns_servers(group_id: str, limit: int = 100) -> None:
+    _emit(ztna.ztna_dns_servers(group_id, limit))
+
+
+@app.command("dns-server")
+def dns_server(group_id: str, server_id: str) -> None:
+    _emit(ztna.ztna_dns_server(group_id, server_id))
+
+
+@app.command("identity-providers")
+def identity_providers(include_local: bool = False, limit: int = 100) -> None:
+    _emit(ztna.ztna_identity_providers(include_local, limit))
+
+
+@app.command("users")
+def users(provider_id: str, limit: int = 25, page_offset: str = "", filter_text: str = "") -> None:
+    _emit(ztna.ztna_users(provider_id, limit, page_offset, filter_text))
+
+
+@app.command("user")
+def user(provider_id: str, user_id: str) -> None:
+    _emit(ztna.ztna_user(provider_id, user_id))
+
+
+@app.command("groups")
+def groups(provider_id: str, limit: int = 25, page_offset: str = "", filter_text: str = "") -> None:
+    _emit(ztna.ztna_groups(provider_id, limit, page_offset, filter_text))
+
+
+@app.command("group")
+def group(provider_id: str, group_id: str) -> None:
+    _emit(ztna.ztna_group(provider_id, group_id))
+
+
+@app.command("group-users")
+def group_users(provider_id: str, group_id: str, limit: int = 25, page_offset: str = "") -> None:
+    _emit(ztna.ztna_group_users(provider_id, group_id, limit, page_offset))
+
+
+@app.command("blocked-users")
+def blocked_users(limit: int = 100) -> None:
+    _emit(ztna.ztna_blocked_users(limit))
+
+
+@app.command("ssh-clients")
+def ssh_clients(limit: int = 50, page: int = 0, filter_text: str = "") -> None:
+    _emit(ztna.ztna_ssh_clients(limit, page, filter_text))
+
+
+@app.command("cloud-integrations")
+def cloud_integrations(limit: int = 100) -> None:
+    _emit(ztna.ztna_cloud_integrations(limit))
+
+
+@app.command("cloud-integration")
+def cloud_integration(integration_id: str) -> None:
+    _emit(ztna.ztna_cloud_integration(integration_id))
+
+
+@app.command("policy-condition-definitions")
+def policy_condition_definitions() -> None:
+    _emit(ztna.ztna_policy_condition_definitions())
+
+
+@app.command("policy-action-types")
+def policy_action_types(limit: int = 100) -> None:
+    _emit(ztna.ztna_policy_action_types(limit))
+
+
+@app.command("policy-validator-types")
+def policy_validator_types(limit: int = 100) -> None:
+    _emit(ztna.ztna_policy_validator_types(limit))
+
+
+@app.command("region")
+def region(region_name: str) -> None:
+    _emit(ztna.ztna_region(region_name))

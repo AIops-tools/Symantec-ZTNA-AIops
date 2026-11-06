@@ -19,7 +19,8 @@ def test_cli_and_mcp_tools_are_governed():
     from symantec_ztna_aiops.mcp_server.server import mcp
 
     assert CliRunner().invoke(app, ["--help"]).exit_code == 0
-    assert len(asyncio.run(mcp.list_tools())) == 16
+    assert len(asyncio.run(mcp.list_tools())) == 40
+    assert len(app.registered_commands) == 40
     for name, tool in mcp._tool_manager._tools.items():
         assert tool.fn._is_governed_tool, name
         assert tool.fn._risk_level == "low", name

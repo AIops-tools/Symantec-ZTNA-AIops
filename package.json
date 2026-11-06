@@ -1,7 +1,7 @@
 {
   "name": "@zw008/symantec-ztna-aiops",
   "version": "0.1.0",
-  "description": "Governed Symantec ZTNA operations — 16 MCP tools with audit.",
+  "description": "Governed Symantec ZTNA operations — 40 MCP tools, read-only with audit.",
   "private": true,
   "license": "MIT",
   "homepage": "https://github.com/AIops-tools/Symantec-ZTNA-AIops",

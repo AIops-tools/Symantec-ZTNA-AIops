@@ -1,4 +1,5 @@
 """Agent identity environment markers remain stable during product renames."""
+
 from symantec_ztna_aiops.governance.audit import detect_agent
 
 
