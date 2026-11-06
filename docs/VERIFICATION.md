@@ -9,7 +9,7 @@
 ## Locally verified
 
 - Contract-shaped HTTP mock tests cover OAuth Basic exchange and one 401 refresh, bad-login backoff, strict page metadata, query-only audit POST, measured truncation and cursor, TLS-origin validation, metric window limits and read-only endpoint allowlist.
-- Local build review: 45 pytest tests passed; Ruff passed; Bandit reported 0 Medium+ findings. The wheel installed in a clean external virtual environment and its MCP server imported from site-packages with 40 tools.
+- Local build review: 47 pytest tests passed; Ruff passed; Bandit reported 0 Medium+ findings. The wheel installed in a clean external virtual environment and its MCP server imported from site-packages with 40 tools.
 
 ## Unverified
 
@@ -20,4 +20,4 @@
 
 The [operations catalog](OPERATIONS.md) lists every implemented tool, source API topic and excluded operation. New read paths have contract-shaped HTTP tests. Public API examples may differ from a real tenant; all added paths remain live-unverified.
 
-All API responses above 16 MiB fail explicitly before JSON parsing to keep unexpected unbounded results out of an agent context. This does not replace server-side pagination; unpaged endpoints report measured output truncation.
+Successful login and resource responses are read as a stream with a 16 MiB decoded-body limit. The client closes the stream and raises an explicit error as soon as the limit is exceeded, before JSON parsing. Local mock-stream regression tests verify that unread chunks are not consumed, including during login. This does not replace server-side pagination; unpaged endpoints report measured output truncation.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import threading
 import time
@@ -59,11 +60,24 @@ class ZtnaConnection:
     def close(self) -> None:
         self._client.close()
 
+    def _bounded_request(self, method: str, path: str, **kwargs: Any) -> tuple[int, bytearray]:
+        with self._client.stream(method, path, **kwargs) as response:
+            status = response.status_code
+            if status >= 400:
+                return status, bytearray()
+            body = bytearray()
+            for chunk in response.iter_bytes(chunk_size=64 * 1024):
+                if len(body) + len(chunk) > _MAX_RESPONSE_BYTES:
+                    raise ZtnaError("ZTNA response exceeds 16 MiB; narrow the query")
+                body.extend(chunk)
+            return status, body
+
     def _authenticate(self) -> None:
         if time.monotonic() < self._auth_retry_at:
             raise ZtnaError("ZTNA login was rejected recently; wait before retrying credentials")
         try:
-            response = self._client.post(
+            status, body = self._bounded_request(
+                "POST",
                 "/v1/oauth/token",
                 auth=(self._client_id, self._client_secret),
                 headers={"Accept": "application/json"},
@@ -72,13 +86,13 @@ class ZtnaConnection:
             raise ZtnaError("ZTNA login timed out; check tenant URL and timeout") from exc
         except httpx.HTTPError as exc:
             raise ZtnaError("Cannot reach ZTNA login; check tenant URL and TLS") from exc
-        if response.status_code in (400, 401, 403):
+        if status in (400, 401, 403):
             self._auth_retry_at = time.monotonic() + 30
             raise ZtnaError("ZTNA rejected OAuth credentials or client privileges")
-        if response.status_code >= 400:
-            raise ZtnaError(f"ZTNA login returned HTTP {response.status_code}")
+        if status >= 400:
+            raise ZtnaError(f"ZTNA login returned HTTP {status}")
         try:
-            data = response.json()
+            data = json.loads(body)
         except ValueError as exc:
             raise ZtnaError("ZTNA login returned non-JSON data") from exc
         token = data.get("access_token") if isinstance(data, dict) else None
@@ -114,7 +128,7 @@ class ZtnaConnection:
                 self._authenticate()
             for attempt in range(2):
                 try:
-                    response = self._client.request(
+                    status, body = self._bounded_request(
                         method,
                         path,
                         params=params,
@@ -132,26 +146,24 @@ class ZtnaConnection:
                     raise ZtnaError(
                         f"Cannot reach ZTNA on {path}; check tenant URL and TLS"
                     ) from exc
-                if response.status_code == 401 and attempt == 0:
+                if status == 401 and attempt == 0:
                     self._token = None
                     self._authenticate()
                     continue
-                if response.status_code >= 400:
+                if status >= 400:
                     hint = "Check client role and resource ID."
-                    if response.status_code == 429:
+                    if status == 429:
                         hint = "ZTNA quota exceeded; retry after the server's limit resets."
-                    elif response.status_code >= 500:
+                    elif status >= 500:
                         hint = "Check ZTNA service health before retrying."
                     raise ZtnaError(
-                        f"ZTNA returned HTTP {response.status_code} for {path}. {hint}",
-                        status_code=response.status_code,
+                        f"ZTNA returned HTTP {status} for {path}. {hint}",
+                        status_code=status,
                     )
-                if len(response.content) > _MAX_RESPONSE_BYTES:
-                    raise ZtnaError("ZTNA response exceeds 16 MiB; narrow the query")
-                if not response.content:
+                if not body:
                     raise ZtnaError(f"ZTNA returned an empty response for {path}")
                 try:
-                    return response.json()
+                    return json.loads(body)
                 except ValueError as exc:
                     raise ZtnaError(f"ZTNA returned non-JSON data for {path}") from exc
             raise ZtnaError("ZTNA authentication retry failed")

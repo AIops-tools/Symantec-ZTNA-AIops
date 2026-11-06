@@ -227,3 +227,40 @@ def test_oversized_response_is_an_explicit_error(monkeypatch):
 
     with pytest.raises(ZtnaError, match="exceeds 16 MiB"):
         ops.sites(connection(handler))
+
+
+@pytest.mark.parametrize("oversized_login", [False, True])
+def test_stream_stops_reading_after_response_limit(monkeypatch, oversized_login):
+    import symantec_ztna_aiops.connection as connection_module
+
+    monkeypatch.setattr(connection_module, "_MAX_RESPONSE_BYTES", 70_000)
+
+    class ProbeStream(httpx.SyncByteStream):
+        def __init__(self):
+            self.read_chunks = 0
+            self.closed = False
+
+        def __iter__(self):
+            for _ in range(3):
+                self.read_chunks += 1
+                yield b" " * (64 * 1024)
+
+        def close(self):
+            self.closed = True
+
+    probe = ProbeStream()
+
+    def handler(request):
+        if (request.url.path == "/v1/oauth/token") == oversized_login:
+            return httpx.Response(200, stream=probe)
+        if request.url.path == "/v1/oauth/token":
+            return httpx.Response(200, content=b'{"access_token":"t","expires_in":3600}')
+        return httpx.Response(200, json={})
+
+    conn = ZtnaConnection(
+        httpx.Client(base_url="https://example.test", transport=httpx.MockTransport(handler))
+    )
+    with pytest.raises(ZtnaError, match="response exceeds 16 MiB"):
+        conn.get("/v2/sites")
+    assert probe.read_chunks == 2
+    assert probe.closed

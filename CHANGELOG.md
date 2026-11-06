@@ -2,6 +2,8 @@
 
 ## 0.1.0 — initial read-only preview
 
+- Stream login and resource responses; abort and close the response at the 16 MiB decoded-body limit.
+
 - 40 governed MCP and matching CLI read operations across ZTNA connectivity, applications, policies, DNS, identities, integrations and audit.
 - OAuth token refresh, bounded paging, explicit identity cursors and a 16 MiB response cap.
 - Partial health probe errors remain visible; audit search terms are redacted from local audit parameters.
