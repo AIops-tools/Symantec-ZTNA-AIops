@@ -5,7 +5,7 @@
       "command": "uvx",
       "args": [
         "--from",
-        "symantec-ztna-aiops==0.1.0",
+        "symantec-ztna-aiops==0.1.1",
         "symantec-ztna-aiops-mcp"
       ]
     }
